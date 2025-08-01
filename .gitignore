@@ -205,3 +205,17 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+.Rproj.user
+
+photos/
+
+library/
+local/
+cellar/
+lock/
+python/
+sandbox/
+staging/
+renv/
+*.Rproj
+*.Rprofile
