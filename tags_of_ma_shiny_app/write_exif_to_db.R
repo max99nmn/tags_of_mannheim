@@ -4,11 +4,13 @@ library(exifr)
 library(dplyr)
 library(DBI)
 library(RSQLite)
+library(purrr)
+library(stringr)
 
 # --- Step 1: Define Your Image Folder ---
 
 # IMPORTANT: Change this path to the folder where your pictures are stored.
-image_folder <- "../photos/"
+image_folder <- "www/"
 
 # --- Step 2: Read EXIF Data ---
 
@@ -23,6 +25,7 @@ if (length(image_file_paths) == 0) {
 # exifr is very efficient and does this in one go!
 exif_data <- read_exif(image_file_paths, tags = c("GPSLatitude", "GPSLongitude", "DateTimeOriginal"))
 
+tag_names <- map_chr(basename(image_file_paths), ~ str_split_1(basename(.x), pattern = "\\.| ")[1])  
 # --- Step 3: Clean the Data for the Database ---
 
 # Filter for photos that actually have GPS data and select/rename columns
@@ -31,12 +34,13 @@ locations_df <- exif_data |>
   filter(!is.na(GPSLatitude) & !is.na(GPSLongitude)) |> 
   select(
     latitude = GPSLatitude,
-    longitude = GPSLongitude
+    longitude = GPSLongitude,
+    image_url = SourceFile
   ) |> 
   # Add the placeholder columns your Shiny app needs
   mutate(
-    artist = "Unknown", # You can update these later
-    image_url = "placeholder.png" # Placeholder for now
+    tag_name = tag_names,
+    image_url = basename(image_url)
   )
 
 if (nrow(locations_df) == 0) {
