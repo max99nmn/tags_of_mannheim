@@ -57,5 +57,4 @@ staging/
 renv/
 *.Rproj
 *.Rprofile
-www/
 *.sqlite
