@@ -41,15 +41,65 @@ ui <- navbarPage(
   tabPanel(
     "Add New Tag",
     h3("Add New Graffiti Tag"),
+
     p(
       "This section can be used to build a form for adding new entries to the database."
+    ),
+
+    fileInput("file1", "Choose a File"),
+    verbatimTextOutput("file1_contents"),
+
+    selectInput(
+      "tag_select",
+      "Select Tag:",
+      list("Onib" = "onib", "Igor" = "igor")
+    ),
+
+    dateInput(
+      inputId = "date",
+      label = h4("Date"),
+      value = Sys.Date()
+    ),
+
+    hr(),
+    verbatimTextOutput("value"),
+    verbatimTextOutput("value_class"),
+    verbatimTextOutput("value_year"),
+
+    h4("Select Location on Map"),
+    leafletOutput("select_map", height = 400),
+    
+    # Output for showing selected lat/lng
+    h4("Selected coords"),
+    verbatimTextOutput("selected_coords")
+
     )
-  )
 )
 
 # --- Server Logic ---
 # Contains the instructions to build and run the app.
 server <- function(input, output, session) {
+
+  output$select_map <- renderLeaflet({
+    leaflet() %>%
+      addTiles() %>%
+      setView(8.466772, 49.488661, zoom = 14)
+  })
+  
+  # Capture the map click and display coordinates
+  output$selected_coords <- renderPrint({
+    req(input$select_map_click)
+    click <- input$select_map_click
+    cat("Longitude:", click$lng, "\nLatitude:", click$lat)
+  })
+
+  observeEvent(input$select_map_click, {
+    click <- input$select_map_click
+    cat("Map clicked at:\n")
+    cat("  Longitude:", click$lng, "\n")
+    cat("  Latitude :", click$lat, "\n")
+  })
+
   output$tag_filter_ui <- renderUI({
     colors_for_tags <- tag_color_map()
     tag_names <- names(colors_for_tags)
@@ -201,6 +251,8 @@ server <- function(input, output, session) {
       class = 'display compact'
     )
   })
+
+  
 }
 
 # --- Run the App ---
