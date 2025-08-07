@@ -6,6 +6,8 @@ library(RSQLite)
 library(pool)
 library(DT)
 library(paletteer)
+library(purrr)
+library(stringr)
 
 con <- dbPool(RSQLite::SQLite(), dbname = "graffiti.sqlite")
 onStop(function() {
@@ -15,6 +17,22 @@ onStop(function() {
 add_jitter <- function(amt, lat, lon) {
   set.seed(as.numeric(lat) * 1e7 + as.numeric(lon) * 1e7)
   rnorm(amt, sd = 0.000008)
+}
+
+create_card_html <- function(name, long, lat, img_url) {
+  sprintf(
+    '<div style="width: 220px; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); font-family: sans-serif; overflow: hidden; margin: 5px auto; text-align: center; background-color: #fff;">
+      <img src="%s" alt="Profilbild" style="width: 100%%; height: auto; display: block;">
+      <div style="padding: 10px;">
+        <h3 style="margin: 10px 0 5px 0; font-size: 1.2em; color: #333;">%s</h3>
+        <p style="margin: 4px 0; color: #555; font-size: 0.85em;"><strong>Lon:</strong> %s | <strong>Lat:</strong> %s</p>
+      </div>
+    </div>',
+    img_url,
+    name,
+    long,
+    lat
+  )
 }
 
 ui <- navbarPage(
@@ -68,24 +86,22 @@ ui <- navbarPage(
 
     h4("Select Location on Map"),
     leafletOutput("select_map", height = 400),
-    
+
     # Output for showing selected lat/lng
     h4("Selected coords"),
     verbatimTextOutput("selected_coords")
-
-    )
+  )
 )
 
 # --- Server Logic ---
 # Contains the instructions to build and run the app.
 server <- function(input, output, session) {
-
   output$select_map <- renderLeaflet({
     leaflet() %>%
       addTiles() %>%
       setView(8.466772, 49.488661, zoom = 14)
   })
-  
+
   # Capture the map click and display coordinates
   output$selected_coords <- renderPrint({
     req(input$select_map_click)
@@ -173,7 +189,8 @@ server <- function(input, output, session) {
             longitude
           }
         ) |>
-        ungroup()
+        ungroup() |>
+        mutate(row_id = 1:nrow(db_data))
     } else {
       db_data
     }
@@ -212,14 +229,22 @@ server <- function(input, output, session) {
         radius = 5,
         fillColor = ~ color_fun(tag_name),
         stroke = FALSE,
-        fillOpacity = 0.8
+        fillOpacity = 0.8,
+        layerId = filtered_data()$row_id
       )
   })
 
-  data_in_bounds <- reactive({
-    req(input$map_bounds)
+  debounced_bounds <- debounce(
+    reactive({
+      input$map_bounds
+    }),
+    500
+  )
 
-    bounds <- input$map_bounds
+  data_in_bounds <- reactive({
+    req(debounced_bounds())
+
+    bounds <- debounced_bounds()
 
     filtered_data() %>%
       filter(
@@ -233,26 +258,48 @@ server <- function(input, output, session) {
   output$visible_locations_table <- renderDT({
     table_data <- data_in_bounds() |>
       mutate(
-        image_preview = paste0("<img src='", image_url, "' width='150'>")
+        latitude = round(latitude, digits = 4),
+        longitude = round(longitude, digits = 4),
+        html_card = pmap_chr(
+          list(tag_name, longitude, latitude, image_url),
+          create_card_html
+        )
       ) |>
-      select(Image = image_preview, Tag = tag_name)
+      select(html_card)
 
     datatable(
       table_data,
+      colnames = NULL,
       escape = FALSE,
+      extensions = 'Select',
+      selection = 'single',
+      callback = JS(
+        "table.on('select.dt', function(e, dt, type, indexes) {",
+        "  if (type === 'row') {",
+        "    var row_node = table.row(indexes).node();",
+        "    row_node.scrollIntoView({behavior: 'smooth', block: 'center'});",
+        "  }",
+        "});"
+      ),
       options = list(
+        dom = "t",
         paging = FALSE,
-        pageLength = 200,
         searching = FALSE,
         lengthChange = FALSE,
-        info = FALSE
+        info = FALSE,
+        columnDefs = list(list(className = 'dt-center', targets = '_all'))
       ),
       rownames = FALSE,
       class = 'display compact'
     )
   })
 
-  
+  visible_locations_table_proxy = dataTableProxy('visible_locations_table')
+
+  observeEvent(input$map_marker_click, {
+    row_of_selected_marker <- input$map_marker_click$id
+    selectRows(visible_locations_table_proxy, selected = row_of_selected_marker)
+  })
 }
 
 # --- Run the App ---
