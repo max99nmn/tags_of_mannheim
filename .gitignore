@@ -58,3 +58,5 @@ renv/
 *.Rproj
 *.Rprofile
 *.sqlite
+
+www/
