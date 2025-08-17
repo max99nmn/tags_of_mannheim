@@ -1,12 +1,15 @@
-open_db_connection <- function(db_file_path) {
-  DBI::dbConnect(RSQLite::SQLite(), db_file_path)
+open_db_pool <- function(db_file_path) {
+  pool::dbPool(
+    drv = RSQLite::SQLite(),
+    dbname = db_file_path
+  )
 }
 
-create_db <- function(con) {
-  DBI::dbExecute(con, "PRAGMA foreign_keys = ON;")
+create_db <- function(pool_con) {
+  DBI::dbExecute(pool_con, "PRAGMA foreign_keys = ON;")
 
   DBI::dbExecute(
-    con,
+    pool_con,
     "
     CREATE TABLE Users (
       user_name TEXT PRIMARY KEY,
@@ -17,7 +20,7 @@ create_db <- function(con) {
   )
 
   DBI::dbExecute(
-    con,
+    pool_con,
     "
     CREATE TABLE Tags (
       tag_id   INTEGER PRIMARY KEY,
@@ -28,7 +31,7 @@ create_db <- function(con) {
   )
 
   DBI::dbExecute(
-    con,
+    pool_con,
     "
     CREATE TABLE Images (
       image_id      INTEGER PRIMARY KEY,
@@ -40,7 +43,7 @@ create_db <- function(con) {
   )
 
   DBI::dbExecute(
-    con,
+    pool_con,
     "
     CREATE TABLE Locations (
       loc_id     INTEGER PRIMARY KEY,
@@ -60,13 +63,16 @@ create_db <- function(con) {
   )
 }
 
-query_locations <- function(con, tag_ids) {
+query_locations_for_map <- function(pool_con, tag_ids, color_palette) {
   #when e.g. no tag is selected then give an empty tibble in the right format
   if (is.null(tag_ids)) {
-    locations_table_col_names <- DBI::dbGetQuery(
-      con,
-      "PRAGMA table_info(Locations);"
-    )$name
+    locations_table_col_names <- c(
+      DBI::dbGetQuery(
+        pool_con,
+        "PRAGMA table_info(Locations);"
+      )$name,
+      color
+    )
 
     #currently not very good as it must be changed when changes to Locations table are made
     location_table_col_types <- list(
@@ -77,7 +83,8 @@ query_locations <- function(con, tag_ids) {
       double(0),
       double(0),
       character(0),
-      integer(0)
+      integer(0),
+      character(0)
     )
 
     col_definitions <- rlang::set_names(
@@ -100,12 +107,55 @@ query_locations <- function(con, tag_ids) {
     ");"
   )
 
-  locations <- DBI::dbGetQuery(con, sql_query, params = base::list(tag_ids))
+  locations_for_map <- DBI::dbGetQuery(
+    pool_con,
+    sql_query,
+    params = base::list(tag_ids)
+  ) |>
+    tibble::as_tibble()
 
-  return(locations)
+  color_lut <- tibble::tibble(
+    tag_id = tag_ids,
+    color = color_palette[1:base::length(tag_ids)]
+  )
+
+  locations_for_map <- locations_for_map |>
+    dplyr::left_join(color_lut, by = "tag_id")
+
+  locations_for_map
 }
 
-# con <- open_db_connection("inst/extdata/tom_database.sqlite")
-# create_db(con)
-# loc_db_name <- query_db(con, 1)
-# DBI::dbDisconnect(con)
+get_locations_for_list <- function(all_data, map_bounds) {
+  locations_for_list <- all_data |>
+    dplyr::filter(
+      lat < map_bounds$north,
+      lat > map_bounds$south,
+      lng < map_bounds$east,
+      lng > map_bounds$west
+    )
+
+  locations_for_list
+}
+
+#the image pairs in the original and the thumbnail folder must be named equally
+fill_db_with_content <- function(
+  pool_con,
+  original_images_folder,
+  thumbnail_images_folder
+) {
+  #get all original_images paths
+  orig_img_paths <- list.files(path = original_images_folder, full.names = TRUE)
+  exif_of_orig_img <- exifr::read_exif(
+    orig_img_paths,
+    tags = c("GPSLatitude", "GPSLongitude", "DateTimeOriginal")
+  )
+
+  #first fill Tags table
+  unique_tags <- unique()
+  DBI::dbWriteTable(pool_con, "Tags", tags_tibble, overwrite = TRUE)
+}
+
+# pool_con <- open_db_pool_connection("inst/extdata/tom_database.sqlite")
+# create_db(pool_con)
+# loc_db_name <- query_db(pool_con, 1)
+# DBI::dbDispool_connect(pool_con)
