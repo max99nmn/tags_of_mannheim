@@ -23,7 +23,7 @@ create_db <- function(pool_con) {
     pool_con,
     "
     CREATE TABLE Tags (
-      tag_id   INTEGER PRIMARY KEY AUTOINCREMENT,
+      tag_id   INTEGER PRIMARY KEY,
       tag_name TEXT NOT NULL UNIQUE,
       tag_info TEXT
     ) STRICT;
@@ -34,7 +34,7 @@ create_db <- function(pool_con) {
     pool_con,
     "
     CREATE TABLE Images (
-      image_id      INTEGER PRIMARY KEY AUTOINCREMENT,
+      image_id      INTEGER PRIMARY KEY,
       image_url     TEXT NOT NULL UNIQUE,
       thumbnail_url TEXT NOT NULL UNIQUE,
       date_created  TEXT
@@ -46,7 +46,7 @@ create_db <- function(pool_con) {
     pool_con,
     "
     CREATE TABLE Locations (
-      loc_id     INTEGER PRIMARY KEY AUTOINCREMENT,
+      loc_id     INTEGER PRIMARY KEY,
       image_id   INTEGER,
       tag_id     INTEGER,
       added_by   TEXT,
@@ -136,63 +136,3 @@ get_locations_for_list <- function(all_data, map_bounds) {
 
   locations_for_list
 }
-
-#the image pairs in the original and the thumbnail folder must be named equally
-#don't know why Sus images still show no lng and lat info in the exif even if they are visible in google photos...
-fill_db_with_content <- function(
-  pool_con,
-  original_images_folder,
-  thumbnail_images_folder
-) {
-  #get all original_images paths
-  orig_img_paths <- base::list.files(
-    path = original_images_folder,
-    full.names = TRUE
-  )
-  exif_of_orig_img <- exifr::read_exif(
-    orig_img_paths,
-    tags = c("GPSLatitude", "GPSLongitude", "DateTimeOriginal")
-  )
-
-  date_added <- base::format(base::Sys.time(), "%Y:%m:%d %H:%M:%S")
-
-  #a random number (from normal distribution) is added to the exact lng and lat from the exif and then rounded to 4 decimal places
-  all_info <- exif_of_orig_img |>
-    dplyr::mutate(
-      file_name = base::basename(SourceFile),
-      image_url = paste0("original_images/", file_name),
-      thumbnail_url = paste0(
-        "thumbnail_images/",
-        stringr::str_replace(file_name, "\\.\\w+", ".jpg")
-      ),
-      tag_name = stringr::str_replace(file_name, " .+", ""),
-      date_added = date_added
-    ) |>
-    dplyr::rename(dplyr::all_of(c(
-      lat = "GPSLatitude",
-      lng = "GPSLongitude",
-      date_created = "DateTimeOriginal"
-    ))) |>
-    dplyr::mutate(dplyr::across(
-      c(lng, lat),
-      ~ base::round(.x + stats::rnorm(1, sd = 0.00085), digits = 4)
-    )) |>
-    dplyr::select(
-      image_url,
-      thumbnail_url,
-      tag_name,
-      lat,
-      lng,
-      date_created,
-      date_added
-    ) |>
-    tidyr::drop_na(lng, lat, tag_name)
-
-  #tbd(one): split all_info tibble into db tables and then write them to the db
-  #DBI::dbWriteTable(pool_con, "Tags", tags_tibble, overwrite = TRUE)
-}
-
-# pool_con <- open_db_pool_connection("inst/extdata/tom_database.sqlite")
-# create_db(pool_con)
-# loc_db_name <- query_db(pool_con, 1)
-# DBI::dbDispool_connect(pool_con)
