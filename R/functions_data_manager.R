@@ -110,7 +110,7 @@ query_locations_for_map <- function(pool_con, tag_ids, color_palette) {
   locations_for_map <- DBI::dbGetQuery(
     pool_con,
     sql_query,
-    params = base::list(tag_ids)
+    params = tag_ids
   ) |>
     tibble::as_tibble()
 
