@@ -71,7 +71,8 @@ query_locations_for_map <- function(pool_con, tag_ids, color_palette) {
         pool_con,
         "PRAGMA table_info(Locations);"
       )$name,
-      color
+      "tag_name",
+      "color"
     )
 
     #currently not very good as it must be changed when changes to Locations table are made
@@ -84,6 +85,7 @@ query_locations_for_map <- function(pool_con, tag_ids, color_palette) {
       double(0),
       character(0),
       integer(0),
+      character(0),
       character(0)
     )
 
@@ -102,7 +104,10 @@ query_locations_for_map <- function(pool_con, tag_ids, color_palette) {
   )
 
   sql_query <- base::paste(
-    "SELECT * FROM Locations WHERE tag_id IN (",
+    "SELECT L.*, T.tag_name
+     FROM Locations AS L
+     LEFT JOIN Tags AS T ON L.tag_id = T.tag_id
+     WHERE L.tag_id IN (",
     placeholders,
     ");"
   )
