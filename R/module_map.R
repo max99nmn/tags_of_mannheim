@@ -34,8 +34,39 @@ map_server <- function(id, map_data) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
+    #get selected marker id
+    selected_marker <- shiny::reactiveVal(NULL)
+    shiny::observeEvent(input$map_marker_click, {
+      selected_marker(input$map_marker_click$id)
+    })
+
+    #add stroke styling to map data
+    styled_map_data <- shiny::reactive({
+      current_selection <- selected_marker()
+
+      if (base::is.null(current_selection)) {
+        stroke <- 0
+        stroke_color <- "black"
+        opacity <- 0.8
+        radius <- 5
+      } else {
+        stroke <- map_data()$loc_id == current_selection
+        stroke_color <- base::ifelse(stroke, "white", "black")
+        opacity <- base::ifelse(stroke, 1, 0.8)
+        radius <- base::ifelse(stroke, 7, 5)
+      }
+
+      map_data() |>
+        dplyr::mutate(
+          stroke = stroke,
+          stroke_color = stroke_color,
+          opacity = opacity,
+          radius = radius
+        )
+    })
+
     #render static map
-    output$map <- renderLeaflet({
+    output$map <- leaflet::renderLeaflet({
       leaflet::leaflet() |>
         leaflet::addProviderTiles(
           leaflet::providers$Stadia.AlidadeSmoothDark,
@@ -46,32 +77,78 @@ map_server <- function(id, map_data) {
 
     #add marker dynamically
     observe({
-      leaflet::leafletProxy(ns("map"), data = map_data()) |>
+      leaflet::leafletProxy(ns("map"), data = styled_map_data()) |>
         leaflet::clearMarkers() |>
         leaflet::addCircleMarkers(
           lng = ~lng,
           lat = ~lat,
           fillColor = ~color,
-          radius = 5,
-          stroke = FALSE,
-          fillOpacity = 0.8,
-          layerId = ~loc_id
+          radius = ~radius,
+          stroke = ~stroke,
+          color = ~stroke_color,
+          fillOpacity = ~opacity,
+          layerId = ~loc_id,
+          label = ~tag_name
         )
     })
+
+    return(base::list(
+      marker_click = shiny::reactive({
+        input$map_marker_click
+      }),
+      map_bounds = shiny::reactive({
+        input$map_bounds
+      }),
+      map_center = shiny::reactive({
+        input$map_center
+      })
+    ))
   })
 }
 
 map_app <- function(map_data) {
-  ui <- fluidPage(
-    map_ui("map1")
+  ui <- shiny::fluidPage(
+    map_ui("map1"),
+    shiny::verbatimTextOutput("dev_output")
   )
 
   server <- function(input, output, session) {
-    map_data_reactive <- reactive({
+    map_data_reactive <- shiny::reactive({
       map_data
     })
 
-    map_server("map1", map_data_reactive)
+    map_output <- map_server("map1", map_data_reactive)
+
+    output$dev_output <- shiny::renderText({
+      shiny::req(map_output)
+      map_output_marker_click <- map_output$marker_click()
+      map_output_map_bounds <- map_output$map_bounds()
+      map_output_map_center <- map_output$map_center()
+
+      base::paste0(
+        "INFO OF CLICKED MARKER:\n",
+        "id: ",
+        map_output_marker_click$id,
+        " | lat: ",
+        map_output_marker_click$lat,
+        " | lng: ",
+        map_output_marker_click$lng,
+        "\nMAP BOUNDS:\n",
+        "north: ",
+        map_output_map_bounds$north,
+        " | east: ",
+        map_output_map_bounds$east,
+        " | south: ",
+        map_output_map_bounds$south,
+        " | west: ",
+        map_output_map_bounds$west,
+        "\nMAP CENTER:\n",
+        "lat: ",
+        map_output_map_center$lat,
+        " | lng: ",
+        map_output_map_center$lng
+      )
+    })
   }
 
   shiny::shinyApp(ui, server)
