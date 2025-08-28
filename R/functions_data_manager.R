@@ -130,6 +130,18 @@ query_locations_for_map <- function(pool_con, tag_ids, color_palette) {
   locations_for_map
 }
 
+query_data_for_selector <- function(pool_con) {
+  sql_query <- "SELECT T.tag_id, T.tag_name FROM Tags as T"
+
+  data_for_selector <- DBI::dbGetQuery(
+    pool_con,
+    sql_query
+  ) |>
+    tibble::as_tibble()
+
+  data_for_selector
+}
+
 get_locations_for_list <- function(all_data, map_bounds) {
   locations_for_list <- all_data |>
     dplyr::filter(
