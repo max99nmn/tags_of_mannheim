@@ -45,20 +45,21 @@ map_server <- function(id, map_data) {
       current_selection <- selected_marker()
 
       if (base::is.null(current_selection)) {
-        stroke <- 0
+        stroke_weight <- 0
         stroke_color <- "black"
         opacity <- 0.8
         radius <- 5
       } else {
-        stroke <- map_data()$loc_id == current_selection
-        stroke_color <- base::ifelse(stroke, "white", "black")
-        opacity <- base::ifelse(stroke, 1, 0.8)
-        radius <- base::ifelse(stroke, 7, 5)
+        is_selected <- map_data()$loc_id == current_selection
+        stroke_weight <- base::ifelse(is_selected, 5, 0)
+        stroke_color <- base::ifelse(is_selected, "white", "black")
+        opacity <- base::ifelse(is_selected, 1, 0.8)
+        radius <- base::ifelse(is_selected, 7, 5)
       }
 
       map_data() |>
         dplyr::mutate(
-          stroke = stroke,
+          stroke_weight = stroke_weight,
           stroke_color = stroke_color,
           opacity = opacity,
           radius = radius
@@ -84,7 +85,8 @@ map_server <- function(id, map_data) {
           lat = ~lat,
           fillColor = ~color,
           radius = ~radius,
-          stroke = ~stroke,
+          stroke = TRUE,
+          weight = ~stroke_weight,
           color = ~stroke_color,
           fillOpacity = ~opacity,
           layerId = ~loc_id,
