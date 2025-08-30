@@ -65,7 +65,7 @@ create_db <- function(pool_con) {
 
 query_locations_for_map <- function(pool_con, tag_ids, color_palette) {
   #when e.g. no tag is selected then give an empty tibble in the right format
-  if (is.null(tag_ids)) {
+  if (is.null(tag_ids) | length(tag_ids) == 0) {
     locations_table_col_names <- c(
       DBI::dbGetQuery(
         pool_con,
@@ -120,7 +120,7 @@ query_locations_for_map <- function(pool_con, tag_ids, color_palette) {
     tibble::as_tibble()
 
   color_lut <- tibble::tibble(
-    tag_id = tag_ids,
+    tag_id = base::as.numeric(tag_ids),
     color = color_palette[1:base::length(tag_ids)]
   )
 
