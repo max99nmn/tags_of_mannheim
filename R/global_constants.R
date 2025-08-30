@@ -10,3 +10,5 @@ color_palette <- c(
   "#BCBD22FF",
   "#17BECFFF"
 )
+
+maximum_selector_items <- 5

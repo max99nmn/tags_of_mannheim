@@ -16,13 +16,12 @@
 #' @importFrom shinyWidgets virtualSelectInput
 #' @export
 selector_ui <- function(id) {
-  shinyWidgets::virtualSelectInput(
-    inputId = shiny::NS(id, "virtual_select_tag_selection"),
+  shiny::selectizeInput(
+    inputId = shiny::NS(id, "tag_selector"),
     label = "Wähle bis zu 10 Tags:",
     choices = NULL,
     multiple = TRUE,
-    showValueAsTags = TRUE,
-    options = list(maxValues = 10)
+    options = list(maxItems = maximum_selector_items)
   )
 }
 
@@ -45,22 +44,26 @@ selector_ui <- function(id) {
 selector_server <- function(id, data_for_selector) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
-
     shiny::observe({
       selector_values <- data_for_selector()$tag_id
       base::names(selector_values) <- data_for_selector()$tag_name
       selector_values <- base::as.list(selector_values)
 
-      shinyWidgets::updateVirtualSelect(
-        inputId = "virtual_select_tag_selection",
+      shiny::updateSelectizeInput(
         session = session,
+        inputId = "tag_selector",
         choices = selector_values,
-        selected = selector_values
+        selected = selector_values[stats::runif(
+          maximum_selector_items,
+          1,
+          base::length(selector_values)
+        )],
+        server = TRUE
       )
     })
 
     return(shiny::reactive({
-      input$virtual_select_tag_selection
+      input$tag_selector
     }))
   })
 }
