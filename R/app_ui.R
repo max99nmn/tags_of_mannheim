@@ -10,7 +10,31 @@ app_ui <- function(request) {
     golem_add_external_resources(),
     # Your application UI logic
     fluidPage(
-      golem::golem_welcome_page() # Remove this line to start building your UI
+      padding = 0,
+      margin = 0,
+      theme = bslib::bs_theme(bootswatch = "darkly"),
+
+      navbarPage(
+        "Tags of Mannheim",
+        id = "nav",
+
+        tabPanel(
+          "Map",
+          div(
+            class = "main-content-wrapper",
+
+            # Left side: Map and Selector modules
+            div(
+              class = "map-container",
+              selector_ui("selector1"),
+              map_ui("map1")
+            ),
+
+            # Right side: Details sidebar module
+            #card_list_ui("card_list1")
+          )
+        )
+      )
     )
   )
 }
