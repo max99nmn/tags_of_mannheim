@@ -18,7 +18,7 @@
 selector_ui <- function(id) {
   shiny::selectizeInput(
     inputId = shiny::NS(id, "tag_selector"),
-    label = "Wähle bis zu 10 Tags:",
+    label = "Wähle bis zu 5 Tags:",
     choices = NULL,
     multiple = TRUE,
     options = list(maxItems = maximum_selector_items)
@@ -64,6 +64,9 @@ selector_server <- function(id, data_for_selector) {
           1,
           base::length(selector_values)
         )],
+        options = base::list(
+          maxItems = maximum_selector_items
+        ),
         server = TRUE
       )
     })
