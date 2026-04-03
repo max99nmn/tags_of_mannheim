@@ -104,9 +104,10 @@ query_locations_for_map <- function(pool_con, tag_ids, color_palette) {
   )
 
   sql_query <- base::paste(
-    "SELECT L.*, T.tag_name
+    "SELECT L.*, T.tag_name, I.thumbnail_url, I.image_url
      FROM Locations AS L
      LEFT JOIN Tags AS T ON L.tag_id = T.tag_id
+     LEFT JOIN Images AS I ON L.image_id = I.image_id
      WHERE L.tag_id IN (",
     placeholders,
     ");"
