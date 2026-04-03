@@ -4,7 +4,7 @@
 \alias{map_server}
 \title{Leaflet Map Server Module}
 \usage{
-map_server(id, map_data)
+map_server(id, map_data, shared_selection)
 }
 \arguments{
 \item{id}{A `character` string. The namespace ID for the module.}

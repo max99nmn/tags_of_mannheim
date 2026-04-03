@@ -30,18 +30,15 @@ map_ui <- function(id) {
 #' @importFrom shiny moduleServer observe
 #' @importFrom leaflet renderLeaflet leaflet leafletProxy addProviderTiles
 #'   providerTileOptions setView clearMarkers addCircleMarkers providers
-map_server <- function(id, map_data) {
+map_server <- function(id, map_data, shared_selection) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
-
-    #get selected marker id
-    selected_marker <- shiny::reactiveVal(NULL)
 
     last_marker_click <- shiny::reactiveVal(Sys.time() - 10)
 
     shiny::observeEvent(input$map_marker_click, {
       last_marker_click(Sys.time())
-      selected_marker(input$map_marker_click$id)
+      shared_selection(input$map_marker_click$id)
     })
 
     shiny::observeEvent(input$map_click, {
@@ -51,13 +48,13 @@ map_server <- function(id, map_data) {
         units = "secs"
       ))
       if (time_diff > 0.2) {
-        selected_marker(NULL)
+        shared_selection(NULL)
       }
     })
 
     #add stroke styling to map data
     styled_map_data <- shiny::reactive({
-      current_selection <- selected_marker()
+      current_selection <- shared_selection()
 
       if (base::is.null(current_selection)) {
         stroke_weight <- 0
