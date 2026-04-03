@@ -20,15 +20,15 @@ app_ui <- function(request) {
 
         tabPanel(
           "Map",
-          div(
+          shiny::div(
             class = "main-content-wrapper",
+            style = "display: flex; height: 87vh; width: 100%;",
 
-            # Left side: Map and Selector modules
-            div(
+            shiny::div(
               class = "map-container",
-              style = "position: relative;",
+              style = "flex-grow: 1; position: relative;",
 
-              div(
+              shiny::div(
                 style = "position: absolute; top: 10px; right: 10px; z-index: 1000; width: 350px; background-color: rgba(34, 34, 34, 0.85); padding: 15px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);",
                 selector_ui("selector1")
               ),
@@ -36,8 +36,10 @@ app_ui <- function(request) {
               map_ui("map1")
             ),
 
-            # Right side: Details sidebar module
-            #card_list_ui("card_list1")
+            shiny::div(
+              style = "width: 350px; background-color: #222;",
+              list_ui("list1")
+            )
           )
         )
       )
