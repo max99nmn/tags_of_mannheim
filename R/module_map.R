@@ -36,8 +36,23 @@ map_server <- function(id, map_data) {
 
     #get selected marker id
     selected_marker <- shiny::reactiveVal(NULL)
+
+    last_marker_click <- shiny::reactiveVal(Sys.time() - 10)
+
     shiny::observeEvent(input$map_marker_click, {
+      last_marker_click(Sys.time())
       selected_marker(input$map_marker_click$id)
+    })
+
+    shiny::observeEvent(input$map_click, {
+      time_diff <- base::as.numeric(base::difftime(
+        Sys.time(),
+        last_marker_click(),
+        units = "secs"
+      ))
+      if (time_diff > 0.2) {
+        selected_marker(NULL)
+      }
     })
 
     #add stroke styling to map data
@@ -87,18 +102,18 @@ map_server <- function(id, map_data) {
 
       if (base::nrow(map_data_current) > 0) {
         map_proxy |>
-        leaflet::addCircleMarkers(
-          lng = ~lng,
-          lat = ~lat,
-          fillColor = ~color,
-          radius = ~radius,
-          stroke = TRUE,
-          weight = ~stroke_weight,
-          color = ~stroke_color,
-          fillOpacity = ~opacity,
-          layerId = ~loc_id,
-          label = ~tag_name
-        )
+          leaflet::addCircleMarkers(
+            lng = ~lng,
+            lat = ~lat,
+            fillColor = ~color,
+            radius = ~radius,
+            stroke = TRUE,
+            weight = ~stroke_weight,
+            color = ~stroke_color,
+            fillOpacity = ~opacity,
+            layerId = ~loc_id,
+            label = ~tag_name
+          )
       }
     })
 
