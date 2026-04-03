@@ -16,12 +16,44 @@
 #' @importFrom shiny NS selectizeInput
 #' @export
 selector_ui <- function(id) {
-  shiny::selectizeInput(
-    inputId = shiny::NS(id, "tag_selector"),
-    label = "Wähle bis zu 5 Tags:",
-    choices = NULL,
-    multiple = TRUE,
-    options = list(maxItems = maximum_selector_items)
+  input_css <- ".colored-selectize .selectize-input { background-color: rgba(34, 34, 34, 0.85) !important; border: 1px solid #444 !important; color: white !important; }"
+
+  # Dynamische CSS-Regeln für die Chips basierend auf der globalen color_palette generieren
+  chip_css <- base::paste0(
+    base::sapply(1:base::length(color_palette), function(i) {
+      base::paste0(
+        ".colored-selectize .selectize-input div.item:nth-of-type(",
+        i,
+        ") { ",
+        "background-color: ",
+        color_palette[i],
+        " !important; ",
+        "color: #ffffff !important; ",
+        "border: none !important; ",
+        "border-radius: 3px !important; ",
+        "}"
+      )
+    }),
+    collapse = " "
+  )
+
+  shiny::tagList(
+    shiny::tags$head(shiny::tags$style(shiny::HTML(base::paste(
+      input_css,
+      chip_css
+    )))),
+    shiny::div(
+      class = "colored-selectize",
+      shiny::selectizeInput(
+        inputId = shiny::NS(id, "tag_selector"),
+        label = "Wähle bis zu 5 Tags:",
+        choices = NULL,
+        multiple = TRUE,
+        options = base::list(
+          maxItems = maximum_selector_items
+        )
+      )
+    )
   )
 }
 
