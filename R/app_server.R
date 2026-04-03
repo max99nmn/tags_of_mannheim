@@ -25,7 +25,6 @@ app_server <- function(input, output, session) {
 
   #map logic
   map_data <- shiny::reactive({
-    req(selected_values())
     query_locations_for_map(pool_con, selected_values(), color_palette)
   })
 

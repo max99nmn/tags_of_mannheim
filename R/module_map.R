@@ -78,8 +78,15 @@ map_server <- function(id, map_data) {
 
     #add marker dynamically
     observe({
-      leaflet::leafletProxy(ns("map"), data = styled_map_data()) |>
-        leaflet::clearMarkers() |>
+      shiny::req(input$map_bounds)
+
+      map_data_current <- styled_map_data()
+
+      map_proxy <- leaflet::leafletProxy(ns("map"), data = map_data_current) |>
+        leaflet::clearMarkers()
+
+      if (base::nrow(map_data_current) > 0) {
+        map_proxy |>
         leaflet::addCircleMarkers(
           lng = ~lng,
           lat = ~lat,
@@ -92,6 +99,7 @@ map_server <- function(id, map_data) {
           layerId = ~loc_id,
           label = ~tag_name
         )
+      }
     })
 
     return(base::list(
