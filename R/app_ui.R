@@ -26,7 +26,13 @@ app_ui <- function(request) {
             # Left side: Map and Selector modules
             div(
               class = "map-container",
-              selector_ui("selector1"),
+              style = "position: relative;",
+
+              div(
+                style = "position: absolute; top: 10px; right: 10px; z-index: 1000; width: 350px; background-color: rgba(34, 34, 34, 0.85); padding: 15px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);",
+                selector_ui("selector1")
+              ),
+
               map_ui("map1")
             ),
 
