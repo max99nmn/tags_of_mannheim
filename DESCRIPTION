@@ -15,6 +15,7 @@ Imports:
     exifr,
     golem,
     leaflet,
+    magick,
     pool,
     purrr,
     rlang,
