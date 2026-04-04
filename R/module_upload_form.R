@@ -1,4 +1,6 @@
 upload_form_ui <- function(id) {
+  ns <- shiny::NS(id)
+
   shiny::tagList(
     shiny::div(
       class = "upload-container",
@@ -16,12 +18,46 @@ upload_form_ui <- function(id) {
           ".png"
         )
       )
+    ),
+    shiny::fluidRow(
+      shiny::column(
+        width = 6,
+        shiny::selectizeInput(
+          inputId = ns("tag_name_input"),
+          label = "Tag Name (auswählen oder neu eingeben)",
+          choices = NULL,
+          multiple = FALSE,
+          options = base::list(create = TRUE, dropdownParent = "body")
+        )
+      ),
+      shiny::column(
+        width = 6,
+        shiny::dateInput(
+          inputId = ns("date_input"),
+          label = "Aufnahmedatum",
+          value = Sys.Date()
+        )
+      )
     )
   )
 }
 
-upload_form_server <- function(id) {
+upload_form_server <- function(id, pool_con) {
   shiny::moduleServer(id, function(input, output, session) {
+    ns <- session$ns
+
+    options(shiny.maxRequestSize = 30 * 1024^2)
+
+    shiny::observe({
+      tags_df <- query_data_for_selector(pool_con)
+      shiny::updateSelectizeInput(
+        session = session,
+        inputId = "tag_name_input",
+        choices = tags_df$tag_name,
+        server = TRUE
+      )
+    })
+
     extracted_data <- shiny::reactive({
       shiny::req(input$image_upload)
 
@@ -50,6 +86,14 @@ upload_form_server <- function(id) {
           "date_created"
         )))
 
+      if (!base::is.na(processed_data$date_created[1])) {
+        parsed_date <- base::as.Date(
+          stringr::str_sub(processed_data$date_created[1], 1, 10),
+          format = "%Y:%m:%d"
+        )
+        shiny::updateDateInput(session, "date_input", value = parsed_date)
+      }
+
       return(processed_data)
     })
 
@@ -64,7 +108,13 @@ upload_form_app <- function() {
   )
 
   server <- function(input, output, session) {
-    upload_data <- upload_form_server("upload1")
+    pool_con <- open_db_pool("inst/extdata/tom_database.sqlite")
+
+    shiny::onStop(function() {
+      pool::poolClose(pool_con)
+    })
+
+    upload_data <- upload_form_server("upload1", pool_con)
 
     output$dev_output <- shiny::renderPrint({
       shiny::req(upload_data())
