@@ -1,4 +1,4 @@
-new_loc_overlay_ui <- function(id) {
+upload_map_ui <- function(id) {
   ns <- shiny::NS(id)
   shiny::tagList(
     shiny::div(
@@ -12,7 +12,7 @@ new_loc_overlay_ui <- function(id) {
   )
 }
 
-new_loc_overlay_server <- function(id, current_upload_image, pool_con) {
+upload_map_server <- function(id, current_upload_image, pool_con) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -81,12 +81,12 @@ new_loc_overlay_server <- function(id, current_upload_image, pool_con) {
   })
 }
 
-new_loc_overlay_app <- function() {
+upload_map_app <- function() {
   shiny::addResourcePath("www", base::file.path(base::getwd(), "inst/app/www"))
 
   ui <- shiny::fluidPage(
     shiny::h3("Test: Bearbeitungs-UI & Mini-Map"),
-    new_loc_overlay_ui("overlay1"),
+    upload_map_ui("overlay1"),
     shiny::verbatimTextOutput("dev_output")
   )
 
@@ -103,7 +103,7 @@ new_loc_overlay_app <- function() {
       )
     })
 
-    overlay_data <- new_loc_overlay_server(
+    overlay_data <- upload_map_server(
       "overlay1",
       dummy_current_upload_image,
       pool_con
