@@ -21,6 +21,7 @@ Imports:
     rlang,
     RSQLite,
     shiny,
+    shinyjs,
     shinyWidgets,
     tibble,
     tidyr
