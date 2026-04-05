@@ -86,9 +86,7 @@ upload_form_server <- function(id, tags_df, disable_save, current_index) {
     })
 
     shiny::observe({
-      has_files <- !base::is.null(input$image_upload)
-
-      if (disable_save() || !has_files) {
+      if (disable_save()) {
         shinyjs::disable("save_upload")
         shinyjs::disable("skip_upload")
       } else {
@@ -99,7 +97,6 @@ upload_form_server <- function(id, tags_df, disable_save, current_index) {
 
     extracted_files <- shiny::reactive({
       shiny::req(input$image_upload)
-
       uploaded_files <- input$image_upload
 
       exif_data <- exifr::read_exif(
@@ -126,14 +123,22 @@ upload_form_server <- function(id, tags_df, disable_save, current_index) {
         )))
     })
 
-    shiny::observeEvent(extracted_files(), {
-      first_file <- extracted_files() |> dplyr::slice(1)
-      if (!base::is.na(first_file$date_created[1])) {
-        parsed_date <- base::as.Date(
-          stringr::str_sub(first_file$date_created[1], 1, 10),
-          format = "%Y:%m:%d"
-        )
-        shiny::updateDateInput(session, "date_input", value = parsed_date)
+    shiny::observeEvent(current_index(), {
+      shiny::req(extracted_files())
+      idx <- current_index()
+
+      if (idx <= base::nrow(extracted_files())) {
+        current_file <- extracted_files() |> dplyr::slice(idx)
+
+        if (!base::is.na(current_file$date_created[1])) {
+          parsed_date <- base::as.Date(
+            stringr::str_sub(current_file$date_created[1], 1, 10),
+            format = "%Y:%m:%d"
+          )
+          shiny::updateDateInput(session, "date_input", value = parsed_date)
+        } else {
+          shiny::updateDateInput(session, "date_input", value = Sys.Date())
+        }
       }
     })
 
