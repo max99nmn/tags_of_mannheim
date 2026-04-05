@@ -12,15 +12,16 @@ upload_map_ui <- function(id) {
   )
 }
 
-upload_map_server <- function(id, current_upload_image, pool_con) {
+upload_map_server <- function(id, current_upload_image, existing_locs) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
     output$minimap <- leaflet::renderLeaflet({
-      shiny::req(current_upload_image())
       data <- current_upload_image()
 
-      if ("lat" %in% names(data) && !is.na(data$lat[1])) {
+      if (
+        !base::is.null(data) && "lat" %in% names(data) && !is.na(data$lat[1])
+      ) {
         lat_init <- base::as.numeric(data$lat[1])
         lng_init <- base::as.numeric(data$lng[1])
         zoom_lvl <- 17
@@ -30,12 +31,7 @@ upload_map_server <- function(id, current_upload_image, pool_con) {
         zoom_lvl <- 13
       }
 
-      all_tags <- query_data_for_selector(pool_con)$tag_id
-      existing_locs <- query_locations_for_map(
-        pool_con,
-        all_tags,
-        color_palette
-      )
+      locs_data <- existing_locs()
 
       map <- leaflet::leaflet() |>
         leaflet::addProviderTiles(
@@ -43,21 +39,21 @@ upload_map_server <- function(id, current_upload_image, pool_con) {
         ) |>
         leaflet::setView(lng = lng_init, lat = lat_init, zoom = zoom_lvl)
 
-      if (base::nrow(existing_locs) > 0) {
+      if (base::nrow(locs_data) > 0) {
         label_html <- base::paste0(
           "<div style='text-align:center;'>",
           "<strong>",
-          existing_locs$tag_name,
+          locs_data$tag_name,
           "</strong><br>",
           "<img src='www/",
-          existing_locs$thumbnail_url,
+          locs_data$thumbnail_url,
           "' style='width:100px;height:100px;object-fit:cover;margin-top:5px;border-radius:4px;'>",
           "</div>"
         )
 
         map <- map |>
           leaflet::addCircleMarkers(
-            data = existing_locs,
+            data = locs_data,
             lng = ~lng,
             lat = ~lat,
             fillColor = "#D3D3D3",
@@ -73,44 +69,54 @@ upload_map_server <- function(id, current_upload_image, pool_con) {
     })
 
     return(shiny::reactive({
-      base::list(
-        lat = input$minimap_center$lat,
-        lng = input$minimap_center$lng
-      )
+      if (base::is.null(input$minimap_center)) {
+        base::list(lat = 49.48876, lng = 8.466682)
+      } else {
+        base::list(
+          lat = input$minimap_center$lat,
+          lng = input$minimap_center$lng
+        )
+      }
     }))
   })
 }
 
 upload_map_app <- function() {
-  shiny::addResourcePath("www", base::file.path(base::getwd(), "inst/app/www"))
-
   ui <- shiny::fluidPage(
-    shiny::h3("Test: Bearbeitungs-UI & Mini-Map"),
-    upload_map_ui("overlay1"),
-    shiny::verbatimTextOutput("dev_output")
+    shiny::titlePanel("Map Module Test App"),
+    shiny::mainPanel(
+      upload_map_ui("test_map"),
+      shiny::h4("Aktueller Kartenmittelpunkt:"),
+      shiny::verbatimTextOutput("map_center_out")
+    )
   )
 
   server <- function(input, output, session) {
-    pool_con <- open_db_pool("inst/extdata/tom_database.sqlite")
-
-    shiny::onStop(function() {
-      pool::poolClose(pool_con)
-    })
-
-    dummy_current_upload_image <- shiny::reactive({
-      base::data.frame(
-        date_created = "xyz"
+    mock_current_image <- shiny::reactive({
+      data.frame(
+        lat = 49.48876,
+        lng = 8.466682
       )
     })
 
-    overlay_data <- upload_map_server(
-      "overlay1",
-      dummy_current_upload_image,
-      pool_con
+    mock_existing_locs <- shiny::reactive({
+      data.frame(
+        lat = c(49.490, 49.485),
+        lng = c(8.465, 8.470),
+        tag_name = c("Ort A", "Ort B"),
+        thumbnail_url = c("dummy1.jpg", "dummy2.jpg"),
+        stringsAsFactors = FALSE
+      )
+    })
+
+    map_center <- upload_map_server(
+      id = "test_map",
+      current_upload_image = mock_current_image,
+      existing_locs = mock_existing_locs
     )
 
-    output$dev_output <- shiny::renderPrint({
-      overlay_data()
+    output$map_center_out <- shiny::renderPrint({
+      map_center()
     })
   }
 
