@@ -12,16 +12,23 @@ new_loc_overlay_ui <- function(id) {
   )
 }
 
-new_loc_overlay_server <- function(id, upload_data, pool_con) {
+new_loc_overlay_server <- function(id, current_upload_image, pool_con) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
     output$minimap <- leaflet::renderLeaflet({
-      shiny::req(upload_data())
-      data <- upload_data()
+      shiny::req(current_upload_image())
+      data <- current_upload_image()
 
-      lat_init <- base::as.numeric(data$lat[1])
-      lng_init <- base::as.numeric(data$lng[1])
+      if ("lat" %in% names(data) && !is.na(data$lat[1])) {
+        lat_init <- base::as.numeric(data$lat[1])
+        lng_init <- base::as.numeric(data$lng[1])
+        zoom_lvl <- 17
+      } else {
+        lat_init <- 49.48876
+        lng_init <- 8.466682
+        zoom_lvl <- 13
+      }
 
       all_tags <- query_data_for_selector(pool_con)$tag_id
       existing_locs <- query_locations_for_map(
@@ -34,7 +41,7 @@ new_loc_overlay_server <- function(id, upload_data, pool_con) {
         leaflet::addProviderTiles(
           leaflet::providers$Stadia.AlidadeSmoothDark
         ) |>
-        leaflet::setView(lng = lng_init, lat = lat_init, zoom = 17)
+        leaflet::setView(lng = lng_init, lat = lat_init, zoom = zoom_lvl)
 
       if (base::nrow(existing_locs) > 0) {
         label_html <- base::paste0(
@@ -90,16 +97,15 @@ new_loc_overlay_app <- function() {
       pool::poolClose(pool_con)
     })
 
-    dummy_upload_data <- shiny::reactive({
+    dummy_current_upload_image <- shiny::reactive({
       base::data.frame(
-        lat = 49.4875,
-        lng = 8.4660
+        date_created = "xyz"
       )
     })
 
     overlay_data <- new_loc_overlay_server(
       "overlay1",
-      dummy_upload_data,
+      dummy_current_upload_image,
       pool_con
     )
 
