@@ -154,3 +154,65 @@ get_locations_for_list <- function(all_data, map_bounds) {
 
   locations_for_list
 }
+
+get_current_upload_image <- function(all_uploaded_images, index) {
+  all_uploaded_images |>
+    dplyr::slice(index)
+}
+
+ensure_admin_user <- function(pool_con) {
+  admin_check <- DBI::dbGetQuery(
+    pool_con,
+    "SELECT 1 FROM Users WHERE user_name = 'ToM Admin'"
+  )
+  if (base::nrow(admin_check) == 0) {
+    DBI::dbExecute(
+      pool_con,
+      "INSERT INTO Users (user_name, pw_hash, salt) VALUES ('ToM Admin', 'dummy', 'dummy')"
+    )
+  }
+}
+
+get_or_create_tag_id <- function(pool_con, tag_name) {
+  existing_tag <- DBI::dbGetQuery(
+    pool_con,
+    "SELECT tag_id FROM Tags WHERE tag_name = ?",
+    params = list(tag_name)
+  )
+
+  if (base::nrow(existing_tag) == 0) {
+    DBI::dbExecute(
+      pool_con,
+      "INSERT INTO Tags (tag_name) VALUES (?)",
+      params = list(tag_name)
+    )
+    return(DBI::dbGetQuery(pool_con, "SELECT last_insert_rowid()")[[1]])
+  }
+
+  existing_tag$tag_id[1]
+}
+
+add_image_placeholder <- function(pool_con, date_created) {
+  DBI::dbExecute(
+    pool_con,
+    "INSERT INTO Images (image_url, thumbnail_url, date_created) VALUES ('temp', 'temp', ?)",
+    params = list(date_created)
+  )
+  DBI::dbGetQuery(pool_con, "SELECT last_insert_rowid()")[[1]]
+}
+
+update_image_urls <- function(pool_con, img_id, image_url, thumbnail_url) {
+  DBI::dbExecute(
+    pool_con,
+    "UPDATE Images SET image_url = ?, thumbnail_url = ? WHERE image_id = ?",
+    params = list(image_url, thumbnail_url, img_id)
+  )
+}
+
+save_location_entry <- function(pool_con, img_id, tag_id, lng, lat) {
+  DBI::dbExecute(
+    pool_con,
+    "INSERT INTO Locations (image_id, tag_id, added_by, lng, lat, date_added) VALUES (?, ?, 'ToM Admin', ?, ?, ?)",
+    params = list(img_id, tag_id, lng, lat, as.character(Sys.Date()))
+  )
+}
