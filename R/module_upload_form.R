@@ -2,10 +2,11 @@ upload_form_ui <- function(id) {
   ns <- shiny::NS(id)
 
   shiny::tagList(
+    shinyjs::useShinyjs(),
     shiny::div(
       class = "upload-container",
       shiny::fileInput(
-        inputId = shiny::NS(id, "image_upload"),
+        inputId = ns("image_upload"),
         label = "Bilder auswählen oder hierher ziehen",
         multiple = TRUE,
         accept = c(
@@ -19,6 +20,7 @@ upload_form_ui <- function(id) {
         )
       )
     ),
+    shiny::uiOutput(ns("status_text")),
     shiny::selectizeInput(
       inputId = ns("tag_name_input"),
       label = "Tag Name (auswählen oder neu eingeben)",
@@ -30,27 +32,72 @@ upload_form_ui <- function(id) {
       inputId = ns("date_input"),
       label = "Aufnahmedatum",
       value = Sys.Date()
+    ),
+    shiny::div(
+      style = "display: flex; gap: 10px; margin-top: 15px;",
+      shiny::actionButton(
+        ns("skip_upload"),
+        "Überspringen",
+        class = "btn-warning",
+        style = "flex: 1;"
+      ),
+      shiny::actionButton(
+        ns("save_upload"),
+        "Speichern & Nächstes",
+        class = "btn-success",
+        style = "flex: 1;"
+      )
     )
   )
 }
 
-upload_form_server <- function(id, pool_con) {
+upload_form_server <- function(id, tags_df, disable_save, current_index) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
-
     options(shiny.maxRequestSize = 30 * 1024^2)
 
+    output$status_text <- shiny::renderUI({
+      shiny::req(extracted_files(), current_index())
+      total <- base::nrow(extracted_files())
+      idx <- current_index()
+
+      if (idx <= total) {
+        current_file <- extracted_files() |> dplyr::slice(idx)
+        shiny::tags$p(
+          style = "margin-top: 10px; margin-bottom: 10px; font-size: 14px;",
+          shiny::tags$strong(base::paste0("Bild ", idx, " von ", total, ": ")),
+          current_file$original_name[1]
+        )
+      } else {
+        shiny::tags$p(
+          style = "margin-top: 10px; margin-bottom: 10px; font-size: 14px;",
+          "Alle Bilder bearbeitet."
+        )
+      }
+    })
+
     shiny::observe({
-      tags_df <- query_data_for_selector(pool_con)
       shiny::updateSelectizeInput(
         session = session,
         inputId = "tag_name_input",
-        choices = tags_df$tag_name,
+        choices = tags_df()$tag_name,
         server = TRUE
       )
     })
 
-    extracted_data <- shiny::reactive({
+    shiny::observe({
+      has_files <- !base::is.null(input$image_upload)
+
+      if (disable_save() || !has_files) {
+        shinyjs::disable("save_upload")
+        shinyjs::disable("skip_upload")
+      } else {
+        shinyjs::enable("save_upload")
+        shinyjs::enable("skip_upload")
+      }
+    })
+
+    extracted_files <- shiny::reactive({
       shiny::req(input$image_upload)
 
       uploaded_files <- input$image_upload
@@ -60,7 +107,7 @@ upload_form_server <- function(id, pool_con) {
         tags = c("GPSLatitude", "GPSLongitude", "DateTimeOriginal")
       )
 
-      processed_data <- exif_data |>
+      exif_data |>
         dplyr::mutate(
           original_name = uploaded_files$name,
           temp_datapath = uploaded_files$datapath
@@ -77,40 +124,66 @@ upload_form_server <- function(id, pool_con) {
           "lng",
           "date_created"
         )))
+    })
 
-      if (!base::is.na(processed_data$date_created[1])) {
+    shiny::observeEvent(extracted_files(), {
+      first_file <- extracted_files() |> dplyr::slice(1)
+      if (!base::is.na(first_file$date_created[1])) {
         parsed_date <- base::as.Date(
-          stringr::str_sub(processed_data$date_created[1], 1, 10),
+          stringr::str_sub(first_file$date_created[1], 1, 10),
           format = "%Y:%m:%d"
         )
         shiny::updateDateInput(session, "date_input", value = parsed_date)
       }
-
-      return(processed_data)
     })
 
-    return(extracted_data)
+    return(base::list(
+      files = extracted_files,
+      tag = shiny::reactive(input$tag_name_input),
+      date = shiny::reactive(input$date_input),
+      save_click = shiny::reactive(input$save_upload),
+      skip_click = shiny::reactive(input$skip_upload)
+    ))
   })
 }
 
 upload_form_app <- function() {
   ui <- shiny::fluidPage(
-    upload_form_ui("upload1"),
-    shiny::verbatimTextOutput("dev_output")
+    shiny::titlePanel("Upload Module Test App"),
+    shiny::mainPanel(
+      upload_form_ui("test_upload")
+    )
   )
 
   server <- function(input, output, session) {
-    pool_con <- open_db_pool("inst/extdata/tom_database.sqlite")
-
-    shiny::onStop(function() {
-      pool::poolClose(pool_con)
+    # Provide reactive dummy data required by the module
+    mock_tags <- shiny::reactive({
+      data.frame(
+        tag_name = c("Urlaub", "Arbeit", "Familie"),
+        stringsAsFactors = FALSE
+      )
     })
 
-    upload_data <- upload_form_server("upload1", pool_con)
+    mock_disable <- shiny::reactiveVal(FALSE)
+    mock_index <- shiny::reactiveVal(1)
 
-    output$dev_output <- shiny::renderPrint({
-      shiny::req(upload_data())
-      upload_data()
+    # Call the module
+    module_output <- upload_form_server(
+      id = "test_upload",
+      tags_df = mock_tags,
+      disable_save = mock_disable,
+      current_index = mock_index
+    )
+
+    # Basic logic to test the buttons and increment the index
+    shiny::observeEvent(module_output$save_click(), {
+      shiny::showNotification("Gespeichert!")
+      mock_index(mock_index() + 1)
+    })
+
+    shiny::observeEvent(module_output$skip_click(), {
+      shiny::showNotification("Übersprungen!")
+      mock_index(mock_index() + 1)
     })
   }
 
