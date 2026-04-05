@@ -19,25 +19,17 @@ upload_form_ui <- function(id) {
         )
       )
     ),
-    shiny::fluidRow(
-      shiny::column(
-        width = 6,
-        shiny::selectizeInput(
-          inputId = ns("tag_name_input"),
-          label = "Tag Name (auswählen oder neu eingeben)",
-          choices = NULL,
-          multiple = FALSE,
-          options = base::list(create = TRUE, dropdownParent = "body")
-        )
-      ),
-      shiny::column(
-        width = 6,
-        shiny::dateInput(
-          inputId = ns("date_input"),
-          label = "Aufnahmedatum",
-          value = Sys.Date()
-        )
-      )
+    shiny::selectizeInput(
+      inputId = ns("tag_name_input"),
+      label = "Tag Name (auswählen oder neu eingeben)",
+      choices = NULL,
+      multiple = FALSE,
+      options = base::list(create = TRUE, dropdownParent = "body")
+    ),
+    shiny::dateInput(
+      inputId = ns("date_input"),
+      label = "Aufnahmedatum",
+      value = Sys.Date()
     )
   )
 }
