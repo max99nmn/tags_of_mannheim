@@ -41,6 +41,36 @@ app_ui <- function(request) {
               list_ui("list1")
             )
           )
+        ),
+        tabPanel(
+          "Upload",
+          shiny::div(
+            class = "main-content-wrapper",
+            style = "display: flex; justify-content: center; align-items: center; height: 87vh; width: 100%; background-color: #111;",
+
+            shiny::div(
+              class = "module-band",
+              style = "display: flex; flex-direction: row; height: 45vh; gap: 20px;",
+
+              shiny::div(
+                class = "form-container",
+                style = "height: 100%; aspect-ratio: 1 / 1; background-color: #222; padding: 15px; border-radius: 8px;",
+                upload_form_ui("upload_form")
+              ),
+
+              shiny::div(
+                class = "map-container",
+                style = "height: 100%; aspect-ratio: 1 / 1; position: relative; border-radius: 8px; overflow: hidden;",
+                upload_map_ui("upload_map")
+              ),
+
+              shiny::div(
+                class = "thumbnail-container",
+                style = "height: 100%; aspect-ratio: 1 / 1; background-color: #222; border-radius: 8px; overflow: hidden;",
+                upload_thumbnail_ui("upload_thumbnail")
+              )
+            )
+          )
         )
       )
     )
