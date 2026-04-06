@@ -2,7 +2,6 @@ upload_form_ui <- function(id) {
   ns <- shiny::NS(id)
 
   shiny::tagList(
-    shinyjs::useShinyjs(),
     shiny::div(
       class = "upload-container",
       shiny::fileInput(
@@ -12,8 +11,6 @@ upload_form_ui <- function(id) {
         accept = c(
           "image/jpeg",
           "image/png",
-          "image/heic",
-          ".heic",
           ".jpg",
           ".jpeg",
           ".png"
