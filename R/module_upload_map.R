@@ -16,67 +16,93 @@ upload_map_server <- function(id, current_upload_image, existing_locs) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
+    # Initialisierung der Karte (nur einmal)
     output$minimap <- leaflet::renderLeaflet({
-      data <- current_upload_image()
+      initial_locs <- shiny::isolate(existing_locs())
 
-      if (
-        !base::is.null(data) && "lat" %in% names(data) && !is.na(data$lat[1])
-      ) {
-        lat_init <- base::as.numeric(data$lat[1])
-        lng_init <- base::as.numeric(data$lng[1])
-        zoom_lvl <- 17
-      } else {
-        lat_init <- 49.48876
-        lng_init <- 8.466682
-        zoom_lvl <- 13
-      }
-
-      locs_data <- existing_locs()
-
-      map <- leaflet::leaflet() |>
+      upload_map <- leaflet::leaflet() |>
         leaflet::addProviderTiles(
           leaflet::providers$Stadia.AlidadeSmoothDark
         ) |>
-        leaflet::setView(lng = lng_init, lat = lat_init, zoom = zoom_lvl)
+        leaflet::setView(lng = 8.466682, lat = 49.48876, zoom = 13)
 
-      if (base::nrow(locs_data) > 0) {
+      if (base::nrow(initial_locs) > 0) {
         label_html <- base::paste0(
           "<div style='text-align:center;'>",
           "<strong>",
-          locs_data$tag_name,
+          initial_locs$tag_name,
           "</strong><br>",
           "<img src='www/",
-          locs_data$thumbnail_url,
+          initial_locs$thumbnail_url,
           "' style='width:100px;height:100px;object-fit:cover;margin-top:5px;border-radius:4px;'>",
           "</div>"
         )
 
-        map <- map |>
+        upload_map |>
           leaflet::addCircleMarkers(
-            data = locs_data,
+            data = initial_locs,
             lng = ~lng,
             lat = ~lat,
             fillColor = "#D3D3D3",
             fillOpacity = 0.4,
             stroke = FALSE,
             radius = 5,
-            label = base::lapply(label_html, shiny::HTML),
-            labelOptions = leaflet::labelOptions(direction = "auto")
+            label = base::lapply(label_html, shiny::HTML)
           )
       }
+    })
 
-      map
+    # Update der Marker, wenn sich die DB ändert
+    shiny::observe({
+      locs_data <- existing_locs()
+
+      label_html <- base::paste0(
+        "<div style='text-align:center;'>",
+        "<strong>",
+        locs_data$tag_name,
+        "</strong><br>",
+        "<img src='www/",
+        locs_data$thumbnail_url,
+        "' style='width:100px;height:100px;object-fit:cover;margin-top:5px;border-radius:4px;'>",
+        "</div>"
+      )
+
+      proxy <- leaflet::leafletProxy("minimap", session)
+
+      proxy |>
+        leaflet::clearMarkers() |>
+        leaflet::addCircleMarkers(
+          data = locs_data,
+          lng = ~lng,
+          lat = ~lat,
+          fillColor = "#D3D3D3",
+          fillOpacity = 0.4,
+          stroke = FALSE,
+          radius = 5,
+          label = base::lapply(label_html, shiny::HTML)
+        )
+    })
+
+    # Update der Kartenmitte, wenn ein neues Bild geladen wird (EXIF Daten)
+    shiny::observe({
+      data <- current_upload_image()
+      shiny::req(data)
+
+      if ("lat" %in% names(data) && !is.na(data$lat[1])) {
+        leaflet::leafletProxy("minimap", session) |>
+          leaflet::setView(
+            lng = base::as.numeric(data$lng[1]),
+            lat = base::as.numeric(data$lat[1]),
+            zoom = 17
+          )
+      }
     })
 
     return(shiny::reactive({
-      if (base::is.null(input$minimap_center)) {
-        base::list(lat = 49.48876, lng = 8.466682)
-      } else {
-        base::list(
-          lat = input$minimap_center$lat,
-          lng = input$minimap_center$lng
-        )
-      }
+      base::list(
+        lat = input$minimap_center$lat,
+        lng = input$minimap_center$lng
+      )
     }))
   })
 }
