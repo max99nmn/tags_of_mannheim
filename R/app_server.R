@@ -7,6 +7,8 @@
 app_server <- function(input, output, session) {
   pool_con <- open_db_pool("inst/extdata/tom_database2.sqlite")
 
+  current_upload_index <- shiny::reactiveVal(1)
+
   shiny::onStop(function() {
     pool::poolClose(pool_con)
   })
@@ -14,6 +16,7 @@ app_server <- function(input, output, session) {
   shared_selection <- shiny::reactiveVal(NULL)
 
   selector_data <- shiny::reactive({
+    current_upload_index()
     query_data_for_selector(pool_con)
   })
 
@@ -23,6 +26,7 @@ app_server <- function(input, output, session) {
   )
 
   map_data <- shiny::reactive({
+    current_upload_index()
     query_locations_for_map(pool_con, selected_values(), color_palette)
   })
 
@@ -40,9 +44,8 @@ app_server <- function(input, output, session) {
   })
 
   # Upload Tab Logic
-  current_upload_index <- shiny::reactiveVal(1)
-  db_trigger <- shiny::reactiveVal(0)
   existing_locations <- shiny::reactive({
+    current_upload_index()
     query_locations_for_map(pool_con, selector_data()$tag_id, color_palette)
   })
 
