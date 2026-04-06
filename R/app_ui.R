@@ -8,6 +8,7 @@ app_ui <- function(request) {
   tagList(
     # Leave this function for adding external resources
     golem_add_external_resources(),
+    shinyjs::useShinyjs(),
     # Your application UI logic
     fluidPage(
       padding = 0,
@@ -46,27 +47,32 @@ app_ui <- function(request) {
           "Upload",
           shiny::div(
             class = "main-content-wrapper",
-            style = "display: flex; justify-content: center; align-items: center; height: 87vh; width: 100%; background-color: #111;",
+            style = "display: flex; gap: 20px; padding: 20px; height: 90vh; width: 100%; background-color: #111; box-sizing: border-box;",
 
+            # 1. Spalte: Formular (feste Breite für optimale Lesbarkeit)
             shiny::div(
-              class = "module-band",
-              style = "display: flex; flex-direction: row; height: 45vh; gap: 20px;",
+              class = "form-container",
+              style = "flex: 0 0 350px; background-color: #222; padding: 20px; border-radius: 8px; overflow-y: auto;",
+              upload_form_ui("upload_form")
+            ),
 
-              shiny::div(
-                class = "form-container",
-                style = "height: 100%; aspect-ratio: 1 / 1; background-color: #222; padding: 15px; border-radius: 8px;",
-                upload_form_ui("upload_form")
-              ),
+            # 2. Spalte: Map und Thumbnail (untereinander)
+            shiny::div(
+              style = "flex: 1; display: flex; flex-direction: column; gap: 20px; overflow: hidden;",
 
+              # Map (Oben, füllt die komplette restliche Höhe)
+              # min-height: 0 ist wichtig, damit Flexbox das Element bei Platzmangel korrekt verkleinert
               shiny::div(
                 class = "map-container",
-                style = "height: 100%; aspect-ratio: 1 / 1; position: relative; border-radius: 8px; overflow: hidden;",
+                style = "flex: 1; border-radius: 8px; overflow: hidden; min-height: 0;",
                 upload_map_ui("upload_map")
               ),
 
+              # Thumbnail (Unten, zwingend quadratisch und zentriert)
+              # height steuert die Größe (z.B. 40% der Spalte), flex-shrink verhindert das Stauchen
               shiny::div(
                 class = "thumbnail-container",
-                style = "height: 100%; aspect-ratio: 1 / 1; background-color: #222; border-radius: 8px; overflow: hidden;",
+                style = "aspect-ratio: 1 / 1; height: 40%; flex-shrink: 0; align-self: center; background-color: #222; border-radius: 8px; overflow: hidden; display: flex; justify-content: center; align-items: center;",
                 upload_thumbnail_ui("upload_thumbnail")
               )
             )
