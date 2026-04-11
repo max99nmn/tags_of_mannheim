@@ -50,8 +50,7 @@ app_server <- function(input, output, session) {
   })
 
   disable_save_btn <- shiny::reactive({
-    base::is.null(upload_inputs$files()) ||
-      current_upload_index() > base::nrow(upload_inputs$files())
+    current_upload_index() > base::nrow(upload_inputs$files())
   })
 
   upload_inputs <- upload_form_server(

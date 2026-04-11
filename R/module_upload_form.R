@@ -18,31 +18,42 @@ upload_form_ui <- function(id) {
       )
     ),
     shiny::uiOutput(ns("status_text")),
-    shiny::selectizeInput(
-      inputId = ns("tag_name_input"),
-      label = "Tag Name (auswählen oder neu eingeben)",
-      choices = NULL,
-      multiple = FALSE,
-      options = base::list(create = TRUE, dropdownParent = "body")
-    ),
-    shiny::dateInput(
-      inputId = ns("date_input"),
-      label = "Aufnahmedatum",
-      value = Sys.Date()
+    shiny::div(
+      style = "display: flex; gap: 10px; margin-top: 15px;",
+      shinyjs::disabled(
+        shiny::selectizeInput(
+          inputId = ns("tag_name_input"),
+          label = "Tag Name",
+          choices = NULL,
+          multiple = FALSE,
+          options = base::list(create = TRUE, dropdownParent = "body")
+        )
+      ),
+      shinyjs::disabled(
+        shiny::dateInput(
+          inputId = ns("date_input"),
+          label = "Aufnahmedatum",
+          value = Sys.Date()
+        )
+      )
     ),
     shiny::div(
       style = "display: flex; gap: 10px; margin-top: 15px;",
-      shiny::actionButton(
-        ns("skip_upload"),
-        "Überspringen",
-        class = "btn-warning",
-        style = "flex: 1;"
+      shinyjs::disabled(
+        shiny::actionButton(
+          ns("skip_upload"),
+          "Überspringen",
+          class = "btn-warning",
+          style = "flex: 1;"
+        )
       ),
-      shiny::actionButton(
-        ns("save_upload"),
-        "Speichern & Nächstes",
-        class = "btn-success",
-        style = "flex: 1;"
+      shinyjs::disabled(
+        shiny::actionButton(
+          ns("save_upload"),
+          "Speichern & Nächstes",
+          class = "btn-success",
+          style = "flex: 1;"
+        )
       )
     )
   )
@@ -54,6 +65,15 @@ upload_form_server <- function(id, tags_df, disable_save, current_index) {
     options(shiny.maxRequestSize = 30 * 1024^2)
 
     output$status_text <- shiny::renderUI({
+      if (base::is.null(input$image_upload)) {
+        return(
+          shiny::tags$p(
+            style = "margin-top: 10px; margin-bottom: 10px; font-size: 14px; font-style: italic; color: gray;",
+            "Noch keine Bilder hochgeladen"
+          )
+        )
+      }
+
       shiny::req(extracted_files(), current_index())
       total <- base::nrow(extracted_files())
       idx <- current_index()
@@ -67,8 +87,8 @@ upload_form_server <- function(id, tags_df, disable_save, current_index) {
         )
       } else {
         shiny::tags$p(
-          style = "margin-top: 10px; margin-bottom: 10px; font-size: 14px;",
-          "Alle Bilder bearbeitet."
+          style = "margin-top: 10px; margin-bottom: 10px; font-size: 14px; font-style: italic; color: gray;",
+          "Alle Bilder bearbeitet"
         )
       }
     })
@@ -86,9 +106,13 @@ upload_form_server <- function(id, tags_df, disable_save, current_index) {
       if (disable_save()) {
         shinyjs::disable("save_upload")
         shinyjs::disable("skip_upload")
+        shinyjs::disable("tag_name_input")
+        shinyjs::disable("date_input")
       } else {
         shinyjs::enable("save_upload")
         shinyjs::enable("skip_upload")
+        shinyjs::enable("tag_name_input")
+        shinyjs::enable("date_input")
       }
     })
 
